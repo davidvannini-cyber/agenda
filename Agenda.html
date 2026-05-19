@@ -1,0 +1,1857 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<title>Agenda · Cronologia mobile</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: "Inter Tight", -apple-system, system-ui, sans-serif; }
+  #root { height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════════════════════════
+// SHARED DATA & UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ACTIVITIES = [
+  { id: 'sopralluoghi', name: 'Lavoro', color: '#c96442', short: 'LAV' },
+  { id: 'mmnds', name: 'MMNDS', color: '#2a6f5e', short: 'MMNDS' },
+  { id: 'casa-pepi', name: 'Casa Pepi', color: '#7c5cad', short: 'PEPI' },
+  { id: 'casa-vapi', name: 'Casa Vapi', color: '#b87333', short: 'VAPI' },
+  { id: 'casa-silvia', name: 'Casa Silvia', color: '#3a6dba', short: 'SILVIA' },
+];
+
+const ACT_BY_ID = Object.fromEntries(ACTIVITIES.map(a => [a.id, a]));
+
+const APPOINTMENTS = [
+  {
+    id: 'apt-1',
+    title: 'Sopralluogo Cantina Boscarelli',
+    activityId: 'sopralluoghi',
+    client: 'Famiglia De Ferrari',
+    address: 'Loc. Cervognano, Montepulciano (SI)',
+    start: '09:30',
+    end: '11:00',
+    travelFromPrev: 52,
+    travelTraffic: 'scorrevole',
+    notes: 'Verifica condizioni tetto cantina + perizia botti.',
+    status: 'done',
+    actualStart: '09:34',
+    actualEnd: '11:12',
+  },
+  {
+    id: 'apt-2',
+    title: 'Sopralluogo Villa Le Capezzine',
+    activityId: 'sopralluoghi',
+    client: 'Studio Avv. Rinaldi',
+    address: 'Via Le Capezzine 4, Cortona (AR)',
+    start: '12:30',
+    end: '14:00',
+    travelFromPrev: 48,
+    travelTraffic: 'moderato',
+    notes: 'Sopralluogo per stima danni copertura sud.',
+    status: 'active',
+    actualStart: '12:38',
+    actualEnd: null,
+  },
+  {
+    id: 'apt-3',
+    title: 'Sopralluogo Negozio Centro',
+    activityId: 'sopralluoghi',
+    client: 'A. Marchetti',
+    address: 'Via XX Settembre 14, Sansepolcro (AR)',
+    start: '15:30',
+    end: '16:30',
+    travelFromPrev: 42,
+    travelTraffic: 'denso',
+    notes: 'Verifica impianto + foto vetrina.',
+    status: 'next',
+    actualStart: null,
+    actualEnd: null,
+  },
+];
+
+const HOME_BASES = [
+  { id: 'home', name: 'Casa', address: 'Via dei Pepi 12, Firenze', travelMin: 95 },
+  { id: 'ufficio', name: 'Ufficio', address: 'Piazza della Signoria 3, Firenze', travelMin: 87 },
+];
+
+const TASKS = [
+  { id: 't1', title: 'Brief contenuti Instagram', activityId: 'mmnds', duration: 45, priority: 2 },
+  { id: 't2', title: 'Misurazione ADV maggio',    activityId: 'mmnds', duration: 90, priority: 3 },
+  { id: 't3', title: 'Aggiornare calendario prenotazioni', activityId: 'casa-pepi', duration: 20, priority: 2 },
+  { id: 't4', title: 'Confronto preventivi idraulico', activityId: 'casa-vapi', duration: 30, priority: 1 },
+  { id: 't5', title: 'Pianificazione pulizie settimana', activityId: 'casa-pepi', duration: 15, priority: 2 },
+  { id: 't6', title: 'Studio opportunità eventi estate', activityId: 'mmnds', duration: 60, priority: 1 },
+];
+
+const TODOS = [
+  { id: 'td1', title: 'Chiamare commercialista', duration: 15 },
+  { id: 'td2', title: 'Confermare cena venerdì', duration: 5 },
+  { id: 'td3', title: 'Leggere offerta luce', duration: 20 },
+  { id: 'td4', title: 'Risposta check-in Casa Silvia 23/05', duration: 10, activityId: 'casa-silvia' },
+  { id: 'td5', title: 'Comprare cavo USB-C', duration: 10 },
+  { id: 'td6', title: 'Inviare bonifico portineria', duration: 5 },
+];
+
+function fmtMin(m) {
+  if (m < 60) return m + ' min';
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+
+function fitInWindow(items, windowMin) {
+  const sorted = [...items].sort((a, b) => b.duration - a.duration);
+  const out = []; let remaining = windowMin;
+  for (const it of sorted) {
+    if (it.duration <= remaining) { out.push(it); remaining -= it.duration; }
+  }
+  return out;
+}
+
+function proposePlan(windowMin) {
+  const usable = Math.max(0, windowMin - 10);
+  const quick = [...TODOS].sort((a, b) => a.duration - b.duration);
+  const tasks = [...TASKS].sort((a, b) => b.priority - a.priority || a.duration - b.duration);
+  const out = []; let remaining = usable;
+  for (const td of quick) {
+    if (td.duration <= remaining && out.length < 2) { out.push({ kind: 'todo', item: td }); remaining -= td.duration; }
+  }
+  for (const t of tasks) {
+    if (t.duration <= remaining) { out.push({ kind: 'task', item: t }); remaining -= t.duration; if (out.length >= 4) break; }
+  }
+  return { items: out, leftover: remaining };
+}
+
+Object.assign(window, {
+  ACTIVITIES, ACT_BY_ID, APPOINTMENTS, HOME_BASES, TASKS, TODOS,
+  fmtMin, fitInWindow, proposePlan,
+});
+</script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════════════════════════
+// IOS FRAME COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function IOSStatusBar({ dark = false, time = '9:41' }) {
+  const c = dark ? '#fff' : '#000';
+  return (
+    <div style={{
+      display: 'flex', gap: 154, alignItems: 'center', justifyContent: 'center',
+      padding: '21px 24px 19px', boxSizing: 'border-box',
+      position: 'relative', zIndex: 20, width: '100%',
+    }}>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 1.5 }}>
+        <span style={{
+          fontFamily: '-apple-system, "SF Pro", system-ui', fontWeight: 590,
+          fontSize: 17, lineHeight: '22px', color: c,
+        }}>{time}</span>
+      </div>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, paddingTop: 1, paddingRight: 1 }}>
+        <svg width="19" height="12" viewBox="0 0 19 12">
+          <rect x="0" y="7.5" width="3.2" height="4.5" rx="0.7" fill={c}/>
+          <rect x="4.8" y="5" width="3.2" height="7" rx="0.7" fill={c}/>
+          <rect x="9.6" y="2.5" width="3.2" height="9.5" rx="0.7" fill={c}/>
+          <rect x="14.4" y="0" width="3.2" height="12" rx="0.7" fill={c}/>
+        </svg>
+        <svg width="17" height="12" viewBox="0 0 17 12">
+          <path d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z" fill={c}/>
+          <path d="M8.5 6.8C9.9 6.8 11.1 7.3 12 8.2L13.1 7.1C11.8 5.9 10.2 5.1 8.5 5.1C6.8 5.1 5.2 5.9 3.9 7.1L5 8.2C5.9 7.3 7.1 6.8 8.5 6.8Z" fill={c}/>
+          <circle cx="8.5" cy="10.5" r="1.5" fill={c}/>
+        </svg>
+        <svg width="27" height="13" viewBox="0 0 27 13">
+          <rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke={c} strokeOpacity="0.35" fill="none"/>
+          <rect x="2" y="2" width="20" height="9" rx="2" fill={c}/>
+          <path d="M25 4.5V8.5C25.8 8.2 26.5 7.2 26.5 6.5C26.5 5.8 25.8 4.8 25 4.5Z" fill={c} fillOpacity="0.4"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function IOSGlassPill({ children, dark = false, style = {} }) {
+  return (
+    <div style={{
+      height: 44, minWidth: 44, borderRadius: 9999,
+      position: 'relative', overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: dark
+        ? '0 2px 6px rgba(0,0,0,0.35), 0 6px 16px rgba(0,0,0,0.2)'
+        : '0 1px 3px rgba(0,0,0,0.07), 0 3px 10px rgba(0,0,0,0.06)',
+      ...style,
+    }}>
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 9999,
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        background: dark ? 'rgba(120,120,128,0.28)' : 'rgba(255,255,255,0.5)',
+      }} />
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 9999,
+        boxShadow: dark
+          ? 'inset 1.5px 1.5px 1px rgba(255,255,255,0.15), inset -1px -1px 1px rgba(255,255,255,0.08)'
+          : 'inset 1.5px 1.5px 1px rgba(255,255,255,0.7), inset -1px -1px 1px rgba(255,255,255,0.4)',
+        border: dark ? '0.5px solid rgba(255,255,255,0.15)' : '0.5px solid rgba(0,0,0,0.06)',
+      }} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', padding: '0 4px' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function IOSNavBar({ title = 'Title', dark = false, trailingIcon = true }) {
+  const muted = dark ? 'rgba(255,255,255,0.6)' : '#404040';
+  const text = dark ? '#fff' : '#000';
+  const pillIcon = (content) => (
+    <IOSGlassPill dark={dark}>
+      <div style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {content}
+      </div>
+    </IOSGlassPill>
+  );
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 10,
+      paddingTop: 62, paddingBottom: 10, position: 'relative', zIndex: 5,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+      }}>
+        {pillIcon(
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" style={{ marginLeft: -1 }}>
+            <path d="M10 2L2 10l8 8" stroke={muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+        {trailingIcon && pillIcon(
+          <svg width="22" height="6" viewBox="0 0 22 6">
+            <circle cx="3" cy="3" r="2.5" fill={muted}/>
+            <circle cx="11" cy="3" r="2.5" fill={muted}/>
+            <circle cx="19" cy="3" r="2.5" fill={muted}/>
+          </svg>
+        )}
+      </div>
+      <div style={{
+        padding: '0 16px',
+        fontFamily: '-apple-system, system-ui',
+        fontSize: 34, fontWeight: 700, lineHeight: '41px',
+        color: text, letterSpacing: 0.4,
+      }}>{title}</div>
+    </div>
+  );
+}
+
+function IOSDevice({ children, width = 402, height = 874, dark = false, title, keyboard = false }) {
+  return (
+    <div style={{
+      width, height, borderRadius: 48, overflow: 'hidden',
+      position: 'relative', background: dark ? '#000' : '#F2F2F7',
+      boxShadow: '0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12)',
+      fontFamily: '-apple-system, system-ui, sans-serif',
+      WebkitFontSmoothing: 'antialiased',
+    }}>
+      <div style={{
+        position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)',
+        width: 126, height: 37, borderRadius: 24, background: '#000', zIndex: 50,
+      }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+        <IOSStatusBar dark={dark} />
+      </div>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {title !== undefined && <IOSNavBar title={title} dark={dark} />}
+        <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+        {keyboard && <IOSKeyboard dark={dark} />}
+      </div>
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 60,
+        height: 34, display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+        paddingBottom: 8, pointerEvents: 'none',
+      }}>
+        <div style={{
+          width: 139, height: 5, borderRadius: 100,
+          background: dark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)',
+        }} />
+      </div>
+    </div>
+  );
+}
+
+function IOSKeyboard({ dark = false }) {
+  const glyph = dark ? 'rgba(255,255,255,0.7)' : '#595959';
+  const keyBg = dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)';
+
+  const key = (content, { w, flex, ret, fs = 25, k } = {}) => (
+    <div key={k} style={{
+      height: 42, borderRadius: 8.5,
+      flex: flex ? 1 : undefined, width: w, minWidth: 0,
+      background: ret ? '#08f' : keyBg,
+      boxShadow: '0 1px 0 rgba(0,0,0,0.075)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: '-apple-system, "SF Compact", system-ui',
+      fontSize: fs, fontWeight: 458, color: ret ? '#fff' : glyph,
+    }}>{content}</div>
+  );
+
+  const row = (keys, pad = 0) => (
+    <div style={{ display: 'flex', gap: 6.5, justifyContent: 'center', padding: `0 ${pad}px` }}>
+      {keys.map(l => key(l, { flex: true, k: l }))}
+    </div>
+  );
+
+  return (
+    <div style={{
+      position: 'relative', zIndex: 15, borderRadius: 27, overflow: 'hidden',
+      padding: '11px 0 2px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      boxShadow: dark
+        ? '0 -2px 20px rgba(0,0,0,0.09)'
+        : '0 -1px 6px rgba(0,0,0,0.018), 0 -3px 20px rgba(0,0,0,0.012)',
+    }}>
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 27,
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        background: dark ? 'rgba(120,120,128,0.14)' : 'rgba(255,255,255,0.25)',
+      }} />
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 27,
+        boxShadow: dark
+          ? 'inset 1.5px 1.5px 1px rgba(255,255,255,0.15)'
+          : 'inset 1.5px 1.5px 1px rgba(255,255,255,0.7), inset -1px -1px 1px rgba(255,255,255,0.4)',
+        border: dark ? '0.5px solid rgba(255,255,255,0.15)' : '0.5px solid rgba(0,0,0,0.06)',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        display: 'flex', gap: 20, alignItems: 'center',
+        padding: '8px 22px 13px', width: '100%', boxSizing: 'border-box',
+        position: 'relative',
+      }}>
+        {['"The"', 'the', 'to'].map((w, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <div style={{ width: 1, height: 25, background: '#ccc', opacity: 0.3 }} />}
+            <div style={{
+              flex: 1, textAlign: 'center',
+              fontFamily: '-apple-system, system-ui', fontSize: 17,
+              color: glyph, letterSpacing: -0.43, lineHeight: '22px',
+            }}>{w}</div>
+          </React.Fragment>
+        ))}
+      </div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 13,
+        padding: '0 6.5px', width: '100%', boxSizing: 'border-box',
+        position: 'relative',
+      }}>
+        {row(['q','w','e','r','t','y','u','i','o','p'])}
+        {row(['a','s','d','f','g','h','j','k','l'], 20)}
+        <div style={{ display: 'flex', gap: 14.25, alignItems: 'center' }}>
+          {key('⇧', { w: 45, k: 'shift' })}
+          <div style={{ display: 'flex', gap: 6.5, flex: 1 }}>
+            {['z','x','c','v','b','n','m'].map(l => key(l, { flex: true, k: l }))}
+          </div>
+          {key('⌫', { w: 45, k: 'del' })}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {key('ABC', { w: 92.25, fs: 18, k: 'abc' })}
+          {key('', { flex: true, k: 'space' })}
+          {key('↩', { w: 92.25, ret: true, k: 'ret' })}
+        </div>
+      </div>
+      <div style={{ height: 56, width: '100%', position: 'relative' }} />
+    </div>
+  );
+}
+
+Object.assign(window, { IOSDevice, IOSStatusBar, IOSNavBar, IOSGlassPill, IOSKeyboard });
+</script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE APP STYLES & COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CM_W = 402, CM_H = 874;
+
+const cmStyles = {
+  mono: { fontFamily: '"JetBrains Mono", "SF Mono", ui-monospace, monospace' },
+  app: {
+    width: '100%', height: '100%',
+    background: '#eef1f4', color: '#0e1620',
+    fontFamily: '"Inter Tight", -apple-system, system-ui, sans-serif',
+    fontSize: 14, position: 'relative',
+    display: 'flex', flexDirection: 'column',
+    paddingTop: 54,
+    paddingBottom: 34,
+    boxSizing: 'border-box',
+  },
+  topbar: {
+    flexShrink: 0,
+    padding: '6px 18px 12px',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  },
+  brandRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  brandMark: {
+    width: 32, height: 32, borderRadius: 8, background: '#3a78d6',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: '#fff', fontSize: 15, fontWeight: 700,
+  },
+  brandText: { display: 'flex', flexDirection: 'column', lineHeight: 1.15 },
+  brandName: { fontSize: 15, fontWeight: 600 },
+  brandDate: { fontSize: 10.5, color: '#5f7388', letterSpacing: 0.5, fontFamily: '"JetBrains Mono", monospace' },
+  iconBtn: {
+    width: 38, height: 38, borderRadius: 10, background: '#fff',
+    border: '1px solid #dde3ec', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', cursor: 'pointer',
+  },
+  tabs: {
+    flexShrink: 0,
+    display: 'flex', gap: 6, padding: '0 12px 12px',
+    overflowX: 'auto',
+  },
+  tab: {
+    flexShrink: 0,
+    padding: '8px 14px', borderRadius: 999,
+    background: '#fff', border: '1px solid #dde3ec',
+    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', gap: 6,
+    color: '#3a4654',
+  },
+  tabActive: {
+    background: '#0e1620', color: '#fff', borderColor: '#0e1620',
+  },
+  tabCount: {
+    fontSize: 10.5, padding: '1px 6px', borderRadius: 999,
+    background: 'rgba(0,0,0,0.05)', color: '#5f7388',
+    fontFamily: '"JetBrains Mono", monospace',
+  },
+  tabCountActive: { background: 'rgba(255,255,255,0.15)', color: '#fff' },
+  content: {
+    flex: 1, overflow: 'auto', padding: '0 14px 100px',
+    WebkitOverflowScrolling: 'touch',
+  },
+  inProgress: {
+    background: '#0e1620', color: '#fff', borderRadius: 14,
+    padding: '16px 18px', marginBottom: 16, position: 'relative',
+    boxShadow: '0 8px 24px rgba(14,22,32,0.18)',
+  },
+  inProgressKicker: {
+    fontSize: 9.5, letterSpacing: 1.8, textTransform: 'uppercase',
+    color: '#c96442', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6,
+  },
+  pulse: {
+    width: 8, height: 8, borderRadius: '50%', background: '#c96442',
+    boxShadow: '0 0 0 0 rgba(201,100,66,0.6)',
+    animation: 'cm-pulse 1.4s ease-in-out infinite',
+  },
+  inProgressTitle: { fontSize: 22, fontWeight: 500, lineHeight: 1.15, marginTop: 8, letterSpacing: -0.2 },
+  inProgressMeta: { fontSize: 12.5, color: '#9bb0c9', marginTop: 4, lineHeight: 1.45 },
+  sectionLabel: {
+    fontSize: 10.5, letterSpacing: 1.5, textTransform: 'uppercase',
+    color: '#5f7388', fontWeight: 600,
+    margin: '4px 4px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  },
+  listRow: {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '14px 14px', background: '#fff', borderRadius: 10,
+    border: '1px solid #dde3ec', marginBottom: 6,
+  },
+  checkbox: {
+    width: 18, height: 18, border: '1.5px solid #c8d1dc',
+    borderRadius: 5, flexShrink: 0,
+  },
+  rowTitle: { fontSize: 14, fontWeight: 500, lineHeight: 1.3 },
+  rowSub: { fontSize: 11.5, color: '#5f7388', marginTop: 2 },
+  rowDur: {
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: 11.5, color: '#5f7388', fontVariantNumeric: 'tabular-nums',
+  },
+  scrim: {
+    position: 'absolute', inset: 0,
+    background: 'rgba(14,22,32,0.5)',
+    zIndex: 100,
+    display: 'flex', alignItems: 'flex-end',
+    animation: 'cm-fade-in .18s ease-out',
+  },
+  sheet: {
+    width: '100%', background: '#fff', borderRadius: '20px 20px 0 0',
+    paddingBottom: 36,
+    maxHeight: '88%',
+    display: 'flex', flexDirection: 'column',
+    animation: 'cm-slide-up .24s cubic-bezier(.2,.7,.3,1)',
+  },
+  sheetGrip: {
+    width: 38, height: 4, background: '#c8d1dc', borderRadius: 2,
+    margin: '10px auto 4px',
+  },
+  sheetHead: { padding: '10px 22px 6px' },
+  sheetKicker: { fontSize: 10.5, letterSpacing: 1.5, textTransform: 'uppercase', color: '#3a78d6', fontWeight: 700 },
+  sheetTitle: { fontSize: 22, fontWeight: 500, marginTop: 4, lineHeight: 1.15, letterSpacing: -0.2 },
+  sheetBody: { padding: '14px 18px 4px', overflow: 'auto' },
+  sheetFoot: { padding: '12px 18px 4px', display: 'flex', gap: 8 },
+  primaryBtn: {
+    flex: 1, padding: '14px 16px',
+    background: '#0e1620', color: '#fff', border: 'none',
+    borderRadius: 10, fontFamily: 'inherit', fontSize: 14,
+    fontWeight: 600, cursor: 'pointer',
+  },
+  primaryBlue: { background: '#3a78d6' },
+  ghostBtn: {
+    flex: '0 0 auto', padding: '14px 18px',
+    background: '#eef1f4', color: '#0e1620', border: 'none',
+    borderRadius: 10, fontFamily: 'inherit', fontSize: 13.5,
+    fontWeight: 500, cursor: 'pointer',
+  },
+  input: {
+    width: '100%', padding: '12px 14px', border: '1px solid #c8d1dc',
+    borderRadius: 10, fontFamily: 'inherit', fontSize: 15, background: '#fff',
+    boxSizing: 'border-box',
+  },
+};
+
+window.CM_W = CM_W;
+window.CM_H = CM_H;
+window.cmStyles = cmStyles;
+</script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE APP — TIMELINE & LISTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CM_HOUR_START = 8;
+const CM_HOUR_END = 19;
+const CM_PX_PER_HOUR = 64;
+
+function cmTimeToY(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return 12 + ((h - CM_HOUR_START) + m / 60) * CM_PX_PER_HOUR;
+}
+
+function CMTimeline({ onActiveTap, onProposeTap }) {
+  const hours = [];
+  for (let h = CM_HOUR_START; h <= CM_HOUR_END; h++) hours.push(h);
+  const totalH = (CM_HOUR_END - CM_HOUR_START) * CM_PX_PER_HOUR + 30;
+
+  const nowY = cmTimeToY('14:05');
+  const freeStartY = cmTimeToY('14:00');
+  const freeEndY = cmTimeToY('14:48');
+
+  return (
+    <div style={{ position: 'relative', paddingLeft: 50, paddingBottom: 16, height: totalH }}>
+      {hours.map(h => {
+        const y = 12 + (h - CM_HOUR_START) * CM_PX_PER_HOUR;
+        return (
+          <React.Fragment key={h}>
+            <div style={{
+              position: 'absolute', top: y, left: 40, right: 0,
+              borderTop: '1px solid #dde3ec',
+            }} />
+            <div style={{ position: 'absolute', top: y - 6, left: 0, fontFamily: '"JetBrains Mono", monospace', fontSize: 10.5, color: '#5f7388', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+              {String(h).padStart(2, '0')}
+            </div>
+          </React.Fragment>
+        );
+      })}
+
+      <div style={{
+        position: 'absolute', top: nowY, left: 36, right: 0,
+        borderTop: '2px solid #c96442', zIndex: 5,
+      }}>
+        <div style={{
+          position: 'absolute', left: -4, top: -5, width: 8, height: 8,
+          borderRadius: '50%', background: '#c96442',
+        }} />
+        <span style={{
+          position: 'absolute', right: 0, top: -19,
+          background: '#c96442', color: '#fff',
+          fontSize: 9.5, padding: '2px 6px', borderRadius: 3,
+          fontFamily: '"JetBrains Mono", monospace', letterSpacing: 0.5, fontWeight: 600,
+        }}>14:05 · ORA</span>
+      </div>
+
+      <div style={{
+        position: 'absolute', top: freeStartY, height: freeEndY - freeStartY,
+        left: 44, right: 4,
+        background: 'rgba(58,120,214,0.07)',
+        border: '1.5px dashed #3a78d6', borderRadius: 8,
+        padding: '8px 10px', zIndex: 2,
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+      }}>
+        <div style={{ fontSize: 9.5, color: '#3a78d6', letterSpacing: 1.2, fontWeight: 700, textTransform: 'uppercase', fontFamily: '"JetBrains Mono", monospace' }}>
+          Libero · 1h 25m
+        </div>
+        <button onClick={onProposeTap} style={{
+          alignSelf: 'flex-start', padding: '4px 8px', background: '#3a78d6',
+          color: '#fff', border: 'none', borderRadius: 4,
+          fontFamily: 'inherit', fontSize: 10, fontWeight: 700, letterSpacing: 0.4,
+          textTransform: 'uppercase', cursor: 'pointer',
+        }}>Proponimi tu →</button>
+      </div>
+
+      {APPOINTMENTS.map(apt => {
+        const y = cmTimeToY(apt.start);
+        const h = cmTimeToY(apt.end) - y;
+        const a = ACT_BY_ID[apt.activityId];
+        const isActive = apt.status === 'active';
+        const isDone = apt.status === 'done';
+        return (
+          <div key={apt.id}
+            onClick={() => isActive && onActiveTap?.()}
+            style={{
+              position: 'absolute', top: y, height: Math.max(h, 60),
+              left: 44, right: 4,
+              background: isActive ? '#0e1620' : '#fff',
+              color: isActive ? '#fff' : '#0e1620',
+              border: isActive ? `2px solid #c96442` : `1px solid #dde3ec`,
+              borderLeft: `4px solid ${a.color}`,
+              borderRadius: 8, padding: '8px 12px',
+              opacity: isDone ? 0.55 : 1,
+              boxShadow: isActive ? '0 4px 16px rgba(201,100,66,0.22)' : '0 2px 6px rgba(14,22,32,0.04)',
+              cursor: 'pointer', zIndex: 3,
+              boxSizing: 'border-box',
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: isActive ? '#9bb0c9' : '#5f7388', fontVariantNumeric: 'tabular-nums' }}>
+                {apt.start} → {apt.end}
+              </div>
+              {isActive && (
+                <span style={{ fontSize: 9, color: '#c96442', letterSpacing: 1, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace', textTransform: 'uppercase' }}>● IN CORSO</span>
+              )}
+              {isDone && <span style={{ fontSize: 9.5, color: '#5f7388', fontFamily: '"JetBrains Mono", monospace' }}>✓ {apt.actualEnd}</span>}
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.2, letterSpacing: -0.1 }}>{apt.title}</div>
+            <div style={{ fontSize: 12, color: isActive ? '#9bb0c9' : '#5f7388', marginTop: 2 }}>
+              {apt.address}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CMTaskList() {
+  return (
+    <div>
+      <div style={cmStyles.sectionLabel}>
+        <span>Task pianificati</span>
+        <span style={cmStyles.rowDur}>{TASKS.length}</span>
+      </div>
+      {TASKS.map(t => {
+        const a = ACT_BY_ID[t.activityId];
+        return (
+          <div key={t.id} style={cmStyles.listRow}>
+            <div style={cmStyles.checkbox} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={cmStyles.rowTitle}>{t.title}</div>
+              <div style={cmStyles.rowSub}>
+                <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 2, background: a.color, verticalAlign: 'middle', marginRight: 6 }} />
+                {a.name}
+              </div>
+            </div>
+            <div style={cmStyles.rowDur}>{fmtMin(t.duration)}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CMTodoList() {
+  return (
+    <div>
+      <div style={cmStyles.sectionLabel}>
+        <span>Cose da fare</span>
+        <span style={cmStyles.rowDur}>{TODOS.length}</span>
+      </div>
+      {TODOS.map(t => (
+        <div key={t.id} style={cmStyles.listRow}>
+          <div style={cmStyles.checkbox} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={cmStyles.rowTitle}>{t.title}</div>
+            {t.activityId && (
+              <div style={cmStyles.rowSub}>
+                <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 2, background: ACT_BY_ID[t.activityId].color, verticalAlign: 'middle', marginRight: 6 }} />
+                {ACT_BY_ID[t.activityId].name}
+              </div>
+            )}
+          </div>
+          <div style={cmStyles.rowDur}>{fmtMin(t.duration)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CMActivities() {
+  const counts = {
+    sopralluoghi: { task: 0, todo: 0, apt: 3 },
+    mmnds: { task: 3, todo: 0, apt: 0 },
+    'casa-pepi': { task: 2, todo: 1, apt: 0 },
+    'casa-vapi': { task: 1, todo: 1, apt: 0 },
+    'casa-silvia': { task: 0, todo: 1, apt: 0 },
+  };
+  return (
+    <div>
+      <div style={cmStyles.sectionLabel}>
+        <span>Le tue attività</span>
+      </div>
+      {ACTIVITIES.map(a => {
+        const c = counts[a.id];
+        return (
+          <div key={a.id} style={cmStyles.listRow}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 9, background: a.color,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
+            }}>{a.name.charAt(0)}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={cmStyles.rowTitle}>{a.name}</div>
+              <div style={cmStyles.rowSub}>
+                {c.apt > 0 && `${c.apt} appunt. · `}
+                {c.task} task · {c.todo} to-do
+              </div>
+            </div>
+            <span style={{ color: '#c8d1dc', fontSize: 18 }}>›</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CMSheet({ kicker, title, children, footer, onClose }) {
+  return (
+    <div style={cmStyles.scrim} onClick={onClose}>
+      <div style={cmStyles.sheet} onClick={e => e.stopPropagation()}>
+        <div style={cmStyles.sheetGrip} />
+        {(kicker || title) && (
+          <div style={cmStyles.sheetHead}>
+            {kicker && <div style={cmStyles.sheetKicker}>{kicker}</div>}
+            {title && <div style={cmStyles.sheetTitle}>{title}</div>}
+          </div>
+        )}
+        <div style={cmStyles.sheetBody}>{children}</div>
+        {footer && <div style={cmStyles.sheetFoot}>{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+function CMFab({ onClick }) {
+  return (
+    <button onClick={onClick} aria-label="Cattura rapida" style={{
+      position: 'absolute', right: 16, bottom: 132,
+      width: 60, height: 60, borderRadius: '50%',
+      background: '#c96442', color: '#fff', border: 'none',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: '0 10px 24px rgba(201,100,66,0.45), 0 0 0 0 rgba(201,100,66,0.25)',
+      cursor: 'pointer', zIndex: 20,
+      animation: 'cm-fab-pulse 2.4s ease-in-out infinite',
+    }}>
+      <style>{`
+        @keyframes cm-fab-pulse {
+          0%,100% { box-shadow: 0 10px 24px rgba(201,100,66,0.45), 0 0 0 0 rgba(201,100,66,0.35); }
+          50%     { box-shadow: 0 10px 24px rgba(201,100,66,0.45), 0 0 0 12px rgba(201,100,66,0); }
+        }
+      `}</style>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <rect x="9" y="2" width="6" height="13" rx="3" fill="#fff" />
+        <path d="M5 11v1a7 7 0 0 0 14 0v-1" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <line x1="12" y1="19" x2="12" y2="22" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="9" y1="22" x2="15" y2="22" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+      </svg>
+    </button>
+  );
+}
+
+window.CMSheet = CMSheet;
+window.CMTimeline = CMTimeline;
+window.CMTaskList = CMTaskList;
+window.CMTodoList = CMTodoList;
+window.CMActivities = CMActivities;
+window.CMFab = CMFab;
+</script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE APP — BOTTOM SHEETS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function CMQuickCaptureSheet({ initialKind = 'todo', onClose, onStartRecording, onPickKind, onTypeText, onManual }) {
+  const [kind, setKind] = React.useState(initialKind);
+  const [text, setText] = React.useState('');
+  const kinds = [
+    { id: 'todo',  label: 'To-Do',  hint: 'Cose veloci da fare' },
+    { id: 'task',  label: 'Task',   hint: 'Lavoro pianificato' },
+    { id: 'event', label: 'Evento', hint: 'Va in calendario' },
+  ];
+
+  return (
+    <CMSheet onClose={onClose}>
+      <div style={{ padding: '0 4px 14px' }}>
+        <div style={{
+          display: 'flex', gap: 4, background: '#eef1f4',
+          borderRadius: 10, padding: 4, marginBottom: 18,
+        }}>
+          {kinds.map(k => {
+            const active = kind === k.id;
+            return (
+              <button key={k.id} onClick={() => { setKind(k.id); onPickKind?.(k.id); }} style={{
+                flex: 1, padding: '9px 0', borderRadius: 7,
+                background: active ? '#fff' : 'transparent',
+                color: active ? '#0e1620' : '#5f7388',
+                border: 'none', fontFamily: 'inherit', fontSize: 13,
+                fontWeight: active ? 600 : 500, cursor: 'pointer',
+                boxShadow: active ? '0 1px 3px rgba(14,22,32,0.08)' : 'none',
+              }}>{k.label}</button>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0 18px' }}>
+          <button onClick={onStartRecording} aria-label="Registra" style={{
+            width: 110, height: 110, borderRadius: '50%',
+            background: '#c96442', color: '#fff', border: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 16px 36px rgba(201,100,66,0.4), 0 0 0 8px rgba(201,100,66,0.08)',
+            cursor: 'pointer',
+          }}>
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="2" width="6" height="13" rx="3" fill="#fff" />
+              <path d="M5 11v1a7 7 0 0 0 14 0v-1" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              <line x1="12" y1="19" x2="12" y2="22" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="9" y1="22" x2="15" y2="22" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <div style={{ marginTop: 14, fontSize: 16, fontWeight: 500, color: '#0e1620' }}>
+            Premi e parla
+          </div>
+          <div style={{ marginTop: 4, fontSize: 12.5, color: '#5f7388', textAlign: 'center', maxWidth: 280 }}>
+            L'AI estrae automaticamente durata, scadenza e attività da quello che dici.
+          </div>
+        </div>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, color: '#9bb0c9',
+          fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 600,
+          margin: '4px 0 12px',
+        }}>
+          <div style={{ flex: 1, height: 1, background: '#eef1f4' }} />
+          <span>oppure scrivi</span>
+          <div style={{ flex: 1, height: 1, background: '#eef1f4' }} />
+        </div>
+
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="Es. chiamare idraulico Casa Pepi, 10 min, entro venerdì"
+          style={cmStyles.input}
+        />
+        <button onClick={() => onTypeText?.(text)} disabled={!text} style={{
+          width: '100%', marginTop: 8, padding: '12px 16px',
+          background: text ? '#0e1620' : '#c8d1dc', color: '#fff',
+          border: 'none', borderRadius: 10, fontFamily: 'inherit',
+          fontSize: 14, fontWeight: 600,
+          cursor: text ? 'pointer' : 'not-allowed',
+        }}>Cattura e analizza →</button>
+
+        {kind !== 'todo' && (
+          <div style={{ textAlign: 'center', marginTop: 14 }}>
+            <button onClick={() => onManual?.(kind)} style={{
+              background: 'transparent', border: 'none', color: '#3a78d6',
+              fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              textDecoration: 'underline', textUnderlineOffset: 3,
+            }}>Inserisci {kind === 'task' ? 'task' : 'evento'} a mano →</button>
+          </div>
+        )}
+      </div>
+    </CMSheet>
+  );
+}
+
+function CMVoiceListeningSheet({ onClose, onStop, transcript }) {
+  return (
+    <CMSheet onClose={onClose}>
+      <div style={{ padding: '0 4px 14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0 18px' }}>
+          <div style={{
+            width: 120, height: 120, borderRadius: '50%',
+            background: '#c96442', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'cm-mic-pulse 1.4s ease-out infinite',
+          }}>
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="2" width="6" height="13" rx="3" fill="#fff" />
+              <path d="M5 11v1a7 7 0 0 0 14 0v-1" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              <line x1="12" y1="19" x2="12" y2="22" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="9" y1="22" x2="15" y2="22" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <style>{`
+            @keyframes cm-mic-pulse {
+              0%,100% { box-shadow: 0 0 0 0 rgba(201,100,66,0.55), 0 0 0 0 rgba(201,100,66,0.3); }
+              50%     { box-shadow: 0 0 0 16px rgba(201,100,66,0), 0 0 0 32px rgba(201,100,66,0); }
+            }
+            @keyframes cm-wave-1 { 0%,100%{height:8px} 50%{height:32px} }
+            @keyframes cm-wave-2 { 0%,100%{height:14px} 50%{height:42px} }
+            @keyframes cm-wave-3 { 0%,100%{height:20px} 50%{height:28px} }
+            @keyframes cm-wave-4 { 0%,100%{height:12px} 50%{height:46px} }
+            @keyframes cm-wave-5 { 0%,100%{height:18px} 50%{height:26px} }
+          `}</style>
+        </div>
+
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          gap: 5, height: 50, margin: '0 0 16px',
+        }}>
+          {[1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3].map((n, i) => (
+            <div key={i} style={{
+              width: 4, borderRadius: 2, background: '#c96442',
+              animation: `cm-wave-${n} 1.1s ${i * 0.07}s ease-in-out infinite`,
+            }} />
+          ))}
+        </div>
+
+        <div style={{
+          background: '#f6f8fb', borderRadius: 12, padding: '14px 16px',
+          minHeight: 80, marginBottom: 6,
+        }}>
+          <div style={{ fontSize: 9.5, letterSpacing: 1.4, textTransform: 'uppercase', color: '#5f7388', fontWeight: 700, marginBottom: 6 }}>
+            Sto ascoltando…
+          </div>
+          <div style={{ fontSize: 15, lineHeight: 1.4, color: '#0e1620' }}>
+            {transcript || (
+              <span style={{ color: '#9bb0c9', fontStyle: 'italic' }}>
+                "Ricordami di chiamare l'idraulico per Casa Pepi…"
+              </span>
+            )}
+            <span style={{
+              display: 'inline-block', width: 2, height: 16,
+              background: '#c96442', marginLeft: 2, verticalAlign: 'middle',
+              animation: 'cm-fade-in 0.5s ease-in-out infinite alternate',
+            }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18 }}>
+          <button onClick={onStop} style={{
+            padding: '14px 28px', background: '#0e1620', color: '#fff',
+            border: 'none', borderRadius: 999, fontFamily: 'inherit',
+            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{
+              display: 'inline-block', width: 10, height: 10, background: '#c96442', borderRadius: 2,
+            }} />
+            Fermati e analizza
+          </button>
+        </div>
+      </div>
+    </CMSheet>
+  );
+}
+
+function CMVoiceResultSheet({ onClose, onSave, onEdit, transcript, extracted }) {
+  const t = transcript || `Ricordami di chiamare l'idraulico per Casa Pepi entro venerdì pomeriggio, ci vorranno una decina di minuti.`;
+  const ext = extracted || {
+    kind: 'To-Do',
+    title: "Chiamare l'idraulico",
+    activity: 'casa-pepi',
+    duration: 10,
+    deadline: 'Ven 22 mag, pomeriggio',
+  };
+  const act = ACT_BY_ID[ext.activity];
+
+  return (
+    <CMSheet
+      onClose={onClose}
+      footer={<>
+        <button style={cmStyles.ghostBtn} onClick={onEdit}>Modifica</button>
+        <button style={{ ...cmStyles.primaryBtn, ...cmStyles.primaryBlue }} onClick={onSave}>
+          ✓ Salva to-do
+        </button>
+      </>}
+    >
+      <div style={{ padding: '0 2px 8px' }}>
+        <div style={{ fontSize: 10, letterSpacing: 1.4, textTransform: 'uppercase', color: '#5f7388', fontWeight: 700, marginBottom: 8 }}>
+          Hai detto
+        </div>
+        <div style={{
+          background: '#f6f8fb', borderLeft: '3px solid #c96442',
+          borderRadius: 8, padding: '12px 14px',
+          fontSize: 14, lineHeight: 1.45, color: '#1a1a17', fontStyle: 'italic',
+          marginBottom: 18,
+        }}>
+          "{t}"
+        </div>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
+          fontSize: 10, letterSpacing: 1.4, textTransform: 'uppercase', color: '#3a78d6', fontWeight: 700,
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2l2.4 6 6.6.6-5 4.4 1.6 6.5L12 16l-5.6 3.5L8 13l-5-4.4 6.6-.6L12 2z" stroke="#3a78d6" strokeWidth="2" strokeLinejoin="round"/>
+          </svg>
+          L'AI ha capito
+        </div>
+
+        <div style={{ background: '#fff', border: '1px solid #dde3ec', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid #eef1f4' }}>
+            <div style={{ fontSize: 9.5, letterSpacing: 1.2, textTransform: 'uppercase', color: '#5f7388', fontWeight: 700, marginBottom: 4 }}>Titolo</div>
+            <div style={{ fontSize: 16, fontWeight: 500, marginTop: 4 }}>{ext.title}</div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid #eef1f4' }}>
+            <div style={{ padding: '12px 16px', borderRight: '1px solid #eef1f4' }}>
+              <div style={{ fontSize: 9.5, letterSpacing: 1.2, textTransform: 'uppercase', color: '#5f7388', fontWeight: 700 }}>Tipo</div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 3 }}>{ext.kind}</div>
+            </div>
+            <div style={{ padding: '12px 16px' }}>
+              <div style={{ fontSize: 9.5, letterSpacing: 1.2, textTransform: 'uppercase', color: '#5f7388', fontWeight: 700 }}>Durata</div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 3, ...cmStyles.mono }}>{fmtMin(ext.duration)}</div>
+            </div>
+          </div>
+
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #eef1f4' }}>
+            <div style={{ fontSize: 9.5, letterSpacing: 1.2, textTransform: 'uppercase', color: '#5f7388', fontWeight: 700 }}>Attività</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: act.color }} />
+              <span style={{ fontSize: 14, fontWeight: 500 }}>{act.name}</span>
+            </div>
+          </div>
+
+          <div style={{ padding: '12px 16px' }}>
+            <div style={{ fontSize: 9.5, letterSpacing: 1.2, textTransform: 'uppercase', color: '#5f7388', fontWeight: 700 }}>Scadenza</div>
+            <div style={{ fontSize: 14, fontWeight: 500, marginTop: 3, ...cmStyles.mono }}>
+              {ext.deadline}
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          marginTop: 12, fontSize: 12, color: '#5f7388', display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <span style={{ color: '#3a78d6' }}>↻</span> Tocca un campo per correggerlo.
+        </div>
+      </div>
+    </CMSheet>
+  );
+}
+
+window.CMQuickCaptureSheet = CMQuickCaptureSheet;
+window.CMVoiceListeningSheet = CMVoiceListeningSheet;
+window.CMVoiceResultSheet = CMVoiceResultSheet;
+</script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE APP — NEW TASK/EVENT SHEETS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function CMNewTaskSheet({ onClose, onSave }) {
+  const [data, setData] = React.useState({
+    title: '',
+    activityId: 'mmnds',
+    duration: 30,
+    priority: 'media',
+    deadline: '',
+    notes: '',
+    subtasks: ['', ''],
+  });
+
+  const fieldLabel = {
+    fontSize: 10.5, letterSpacing: 1.2, textTransform: 'uppercase',
+    color: '#5f7388', marginBottom: 6, fontWeight: 600, display: 'block',
+  };
+
+  return (
+    <CMSheet
+      kicker="+ Nuovo task"
+      title="Pianifica un task"
+      onClose={onClose}
+      footer={<>
+        <button style={cmStyles.ghostBtn} onClick={onClose}>Annulla</button>
+        <button style={{ ...cmStyles.primaryBtn, ...cmStyles.primaryBlue }} onClick={onSave}>
+          Salva task
+        </button>
+      </>}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 2px 12px' }}>
+        <div>
+          <label style={fieldLabel}>Titolo</label>
+          <input style={cmStyles.input} placeholder="Es: Brief contenuti instagram"
+            value={data.title} onChange={e => setData({ ...data, title: e.target.value })} />
+        </div>
+
+        <div>
+          <label style={fieldLabel}>Attività</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {ACTIVITIES.map(a => {
+              const active = data.activityId === a.id;
+              return (
+                <button key={a.id} onClick={() => setData({ ...data, activityId: a.id })}
+                  style={{
+                    padding: '8px 12px', borderRadius: 999,
+                    border: '1.5px solid ' + (active ? a.color : '#dde3ec'),
+                    background: active ? a.color : '#fff',
+                    color: active ? '#fff' : '#0e1620',
+                    fontFamily: 'inherit', fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: 2,
+                    background: active ? '#fff' : a.color,
+                  }} />
+                  {a.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <label style={fieldLabel}>Durata stimata</label>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {[15, 30, 45, 60, 90, 120].map(d => (
+              <button key={d} onClick={() => setData({ ...data, duration: d })}
+                style={{
+                  flex: 1, padding: '11px 0',
+                  border: '1px solid ' + (data.duration === d ? '#0e1620' : '#c8d1dc'),
+                  borderRadius: 8,
+                  background: data.duration === d ? '#0e1620' : '#fff',
+                  color: data.duration === d ? '#fff' : '#0e1620',
+                  fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5,
+                  fontWeight: 500, cursor: 'pointer',
+                }}>{d < 60 ? d + 'm' : (d / 60) + 'h'}</button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label style={fieldLabel}>Priorità</label>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {[
+              { id: 'bassa', label: 'Bassa', color: '#9bb0c9' },
+              { id: 'media', label: 'Media', color: '#3a78d6' },
+              { id: 'alta',  label: 'Alta',  color: '#c96442' },
+            ].map(p => {
+              const active = data.priority === p.id;
+              return (
+                <button key={p.id} onClick={() => setData({ ...data, priority: p.id })}
+                  style={{
+                    flex: 1, padding: '11px 0',
+                    border: '1.5px solid ' + (active ? p.color : '#dde3ec'),
+                    borderRadius: 8,
+                    background: active ? p.color : '#fff',
+                    color: active ? '#fff' : '#0e1620',
+                    fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  }}>{p.label}</button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <label style={fieldLabel}>Scadenza (opzionale)</label>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {['Oggi', 'Domani', 'Questa settimana', 'Scegli data…'].map(d => (
+              <button key={d} onClick={() => setData({ ...data, deadline: d })}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid ' + (data.deadline === d ? '#0e1620' : '#dde3ec'),
+                  borderRadius: 999,
+                  background: data.deadline === d ? '#0e1620' : '#fff',
+                  color: data.deadline === d ? '#fff' : '#3a4654',
+                  fontFamily: 'inherit', fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                }}>{d}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </CMSheet>
+  );
+}
+
+function CMNewEventSheet({ onClose, onSave }) {
+  const [data, setData] = React.useState({
+    title: '',
+    kind: 'sopralluogo',
+    activityId: 'sopralluoghi',
+    allDay: false,
+    date: 'Mar 19 mag',
+    start: '10:00',
+    end: '11:30',
+    address: '',
+    travelBuffer: true,
+    reminder: '15m',
+    syncCalendar: true,
+    notes: '',
+  });
+
+  const fieldLabel = {
+    fontSize: 10.5, letterSpacing: 1.2, textTransform: 'uppercase',
+    color: '#5f7388', marginBottom: 6, fontWeight: 600, display: 'block',
+  };
+
+  const Toggle = ({ on, onChange }) => (
+    <div onClick={() => onChange(!on)} style={{
+      width: 40, height: 24, borderRadius: 999,
+      background: on ? '#3a78d6' : '#dde3ec',
+      position: 'relative', flexShrink: 0, cursor: 'pointer',
+      transition: 'background .15s',
+    }}>
+      <div style={{
+        position: 'absolute', top: 2,
+        left: on ? 18 : 2, width: 20, height: 20,
+        borderRadius: '50%', background: '#fff',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        transition: 'left .15s',
+      }} />
+    </div>
+  );
+
+  return (
+    <CMSheet
+      kicker="+ Nuovo evento"
+      title="Aggiungi al calendario"
+      onClose={onClose}
+      footer={<>
+        <button style={cmStyles.ghostBtn} onClick={onClose}>Annulla</button>
+        <button style={{ ...cmStyles.primaryBtn, ...cmStyles.primaryBlue }} onClick={onSave}>
+          Crea evento
+        </button>
+      </>}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 2px 12px' }}>
+        <div>
+          <label style={fieldLabel}>Titolo</label>
+          <input style={cmStyles.input} placeholder="Es: Pranzo con cliente"
+            value={data.title} onChange={e => setData({ ...data, title: e.target.value })} />
+        </div>
+
+        <div>
+          <label style={fieldLabel}>Attività</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {ACTIVITIES.map(a => {
+              const active = data.activityId === a.id;
+              return (
+                <button key={a.id} onClick={() => setData({ ...data, activityId: a.id })}
+                  style={{
+                    padding: '8px 12px', borderRadius: 999,
+                    border: '1.5px solid ' + (active ? a.color : '#dde3ec'),
+                    background: active ? a.color : '#fff',
+                    color: active ? '#fff' : '#0e1620',
+                    fontFamily: 'inherit', fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: active ? '#fff' : a.color }} />
+                  {a.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <label style={fieldLabel}>Promemoria</label>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {['no', '5m', '15m', '30m', '1h', '1g'].map(r => {
+              const active = data.reminder === r;
+              return (
+                <button key={r} onClick={() => setData({ ...data, reminder: r })}
+                  style={{
+                    padding: '7px 12px',
+                    border: '1px solid ' + (active ? '#0e1620' : '#dde3ec'),
+                    borderRadius: 999,
+                    background: active ? '#0e1620' : '#fff',
+                    color: active ? '#fff' : '#3a4654',
+                    fontFamily: r === 'no' ? 'inherit' : '"JetBrains Mono", monospace',
+                    fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                  }}>{r === 'no' ? 'Nessuno' : r}</button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </CMSheet>
+  );
+}
+
+function CMShortcutsScreen({ onBack }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, background: '#eef1f4',
+      paddingTop: 54, paddingBottom: 34, zIndex: 90,
+      display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{
+        flexShrink: 0, padding: '6px 14px 12px',
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}>
+        <button onClick={onBack} style={{
+          width: 38, height: 38, borderRadius: 10,
+          background: '#fff', border: '1px solid #dde3ec',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M14 6l-6 6 6 6" stroke="#0e1620" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#5f7388', fontWeight: 600 }}>
+            Impostazioni
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 600 }}>Scorciatoie esterne</div>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflow: 'auto', padding: '4px 14px 14px' }}>
+        <div style={{ fontSize: 13, color: '#5f7388', lineHeight: 1.5, marginBottom: 14 }}>
+          Crea un to-do <b>senza aprire l'app</b>. Configura una o più scorciatoie.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.CMNewTaskSheet = CMNewTaskSheet;
+window.CMNewEventSheet = CMNewEventSheet;
+window.CMShortcutsScreen = CMShortcutsScreen;
+</script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE APP — MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function VariantCMobile({ initialTab = 'oggi', initialPhase = 'main' } = {}) {
+  const [tab, setTab] = React.useState(initialTab);
+  const [phase, setPhase] = React.useState(initialPhase);
+  const [altro, setAltro] = React.useState({ title: '', notes: '', duration: 30 });
+  const proposal = React.useMemo(() => proposePlan(85), []);
+  const activeApt = APPOINTMENTS.find(a => a.status === 'active');
+
+  const close = () => setPhase('main');
+
+  return (
+    <div style={cmStyles.app}>
+      <style>{`
+        @keyframes cm-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(201,100,66,0.55)} 50%{box-shadow:0 0 0 8px rgba(201,100,66,0)} }
+        @keyframes cm-slide-up { from{transform:translateY(20%);opacity:0} to{transform:translateY(0);opacity:1} }
+        @keyframes cm-fade-in { from{opacity:0} to{opacity:1} }
+      `}</style>
+
+      <div style={cmStyles.topbar}>
+        <div style={cmStyles.brandRow}>
+          <div style={cmStyles.brandMark}>A</div>
+          <div style={cmStyles.brandText}>
+            <div style={cmStyles.brandName}>Agenda</div>
+            <div style={cmStyles.brandDate}>LUN · 18 MAGGIO · 14:05</div>
+          </div>
+        </div>
+        <div style={cmStyles.iconBtn} title="Menu" onClick={() => setPhase('shortcuts')}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16M4 12h16M4 17h10" stroke="#0e1620" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <div style={cmStyles.tabs}>
+        {[
+          { id: 'oggi', label: 'Oggi' },
+          { id: 'task', label: 'Task', count: TASKS.length },
+          { id: 'todo', label: 'To-Do', count: TODOS.length },
+          { id: 'attivita', label: 'Attività' },
+        ].map(t => (
+          <div key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{ ...cmStyles.tab, ...(tab === t.id ? cmStyles.tabActive : {}) }}>
+            <span>{t.label}</span>
+            {t.count !== undefined && (
+              <span style={{ ...cmStyles.tabCount, ...(tab === t.id ? cmStyles.tabCountActive : {}) }}>{t.count}</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div style={cmStyles.content}>
+        {tab === 'oggi' && (
+          <>
+            <div style={cmStyles.inProgress} onClick={() => setPhase('ending')}>
+              <div style={cmStyles.inProgressKicker}>
+                <span style={cmStyles.pulse} />
+                <span>Sopralluogo in corso</span>
+              </div>
+              <div style={cmStyles.inProgressTitle}>Villa Le Capezzine, Cortona.</div>
+              <div style={cmStyles.inProgressMeta}>
+                Studio Avv. Rinaldi · Via Le Capezzine 4
+              </div>
+              <div style={{ display: 'flex', gap: 0, marginTop: 14, paddingTop: 14, borderTop: '1px solid #1f2937' }}>
+                <div style={{ flex: 1, paddingRight: 8 }}>
+                  <div style={{ fontSize: 9.5, letterSpacing: 1.3, textTransform: 'uppercase', color: '#5f7388', fontWeight: 600 }}>Inizio</div>
+                  <div style={{ fontSize: 15, fontWeight: 500, marginTop: 4, fontFamily: '"JetBrains Mono", monospace' }}>12:38</div>
+                </div>
+                <div style={{ flex: 1, paddingRight: 8 }}>
+                  <div style={{ fontSize: 9.5, letterSpacing: 1.3, textTransform: 'uppercase', color: '#5f7388', fontWeight: 600 }}>Durata</div>
+                  <div style={{ fontSize: 15, fontWeight: 500, marginTop: 4, fontFamily: '"JetBrains Mono", monospace' }}>1h 27m</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 9.5, letterSpacing: 1.3, textTransform: 'uppercase', color: '#5f7388', fontWeight: 600 }}>Fine prev.</div>
+                  <div style={{ fontSize: 15, fontWeight: 500, marginTop: 4, fontFamily: '"JetBrains Mono", monospace' }}>14:00</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={cmStyles.sectionLabel}>
+              <span>Cronologia · oggi</span>
+              <span style={cmStyles.rowDur}>3 sopralluoghi</span>
+            </div>
+            <CMTimeline
+              onActiveTap={() => setPhase('ending')}
+              onProposeTap={() => setPhase('propose')}
+            />
+          </>
+        )}
+
+        {tab === 'task' && <CMTaskList />}
+        {tab === 'todo' && <CMTodoList />}
+        {tab === 'attivita' && <CMActivities />}
+      </div>
+
+      <CMFab onClick={() => setPhase('quickcapture')} />
+
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 34,
+        padding: '10px 14px 12px',
+        background: 'linear-gradient(180deg, rgba(238,241,244,0) 0%, #eef1f4 28%)',
+        pointerEvents: 'none',
+        zIndex: 10,
+      }}>
+        <div style={{
+          pointerEvents: 'auto',
+          background: '#fff', borderRadius: 14,
+          border: '1px solid #dde3ec',
+          boxShadow: '0 8px 24px rgba(14,22,32,0.12)',
+          padding: '10px 14px 10px 14px',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{ flex: 0, marginRight: 4 }}>
+            <span style={cmStyles.pulse} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0, lineHeight: 1.15 }}>
+            <div style={{ fontSize: 10, letterSpacing: 1.3, color: '#5f7388', textTransform: 'uppercase', fontWeight: 600 }}>In corso · 1h 27m</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Villa Le Capezzine
+            </div>
+          </div>
+          <button style={{
+            flex: 1, padding: '12px 14px',
+            background: '#c96442', color: '#fff', border: 'none',
+            borderRadius: 10, fontFamily: 'inherit', fontSize: 14,
+            fontWeight: 600, cursor: 'pointer', letterSpacing: 0.2,
+          }} onClick={() => setPhase('ending')}>
+            Fine
+          </button>
+        </div>
+      </div>
+
+      {phase === 'ending' && (
+        <CMSheet
+          kicker="⏹ Fine sopralluogo"
+          title="Concludo Cortona?"
+          onClose={close}
+          footer={<>
+            <button style={cmStyles.ghostBtn} onClick={close}>Annulla</button>
+            <button style={cmStyles.primaryBtn} onClick={() => setPhase('chooser')}>Concludi e scegli</button>
+          </>}
+        >
+          <div style={{ padding: '0 4px 12px' }}>
+            <div style={{ fontSize: 12.5, color: '#2a6f5e' }}>
+              ⏷ <b>−3 min</b> rispetto al piano. Il calendario verrà aggiornato.
+            </div>
+          </div>
+        </CMSheet>
+      )}
+
+      {phase === 'chooser' && (
+        <CMSheet
+          kicker="↓ E adesso?"
+          title="1h 25m fino a Sansepolcro"
+          onClose={close}
+        >
+          <div style={{ fontSize: 12.5, color: '#5f7388', margin: '-4px 4px 12px' }}>
+            Considerando 42 min di guida con traffico denso previsto.
+          </div>
+          {[
+            { id: 'propose', icon: '★', label: 'Proponimi tu', sub: 'Combino task e to-do nel tempo libero.', featured: true },
+            { id: 'next', icon: '→', label: 'Prossimo appuntamento', sub: 'Sansepolcro · parti 14:48' },
+            { id: 'home', icon: '⌂', label: 'Rientro a casa', sub: 'Firenze · ~95 min' },
+            { id: 'tasklist', icon: '⊟', label: 'Scegli un task', sub: 'Tra i pianificati' },
+            { id: 'todolist', icon: '✓', label: 'Scegli un to-do', sub: 'Cose veloci' },
+            { id: 'altro', icon: '+', label: 'Altro…', sub: 'Inserisci e crea in calendario' },
+          ].map(o => (
+            <div key={o.id} style={{
+              display: 'flex', alignItems: 'center', gap: 14,
+              padding: '16px 16px', borderRadius: 12,
+              background: o.featured ? '#0e1620' : '#f6f8fb',
+              border: o.featured ? 'none' : '1px solid #eef1f4',
+              marginBottom: 6, cursor: 'pointer',
+              color: o.featured ? '#fff' : '#000',
+            }} onClick={() => setPhase(o.id)}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                background: o.featured ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, color: o.featured ? '#c96442' : '#0e1620',
+              }}>{o.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 500 }}>{o.label}</div>
+                <div style={{ fontSize: 12, color: o.featured ? '#9bb0c9' : '#5f7388', marginTop: 1 }}>{o.sub}</div>
+              </div>
+              <span style={{ marginLeft: 'auto', opacity: 0.4, fontSize: 18 }}>›</span>
+            </div>
+          ))}
+        </CMSheet>
+      )}
+
+      {phase === 'propose' && (
+        <CMSheet
+          kicker={`Proposta · ${proposal.items.length} elementi`}
+          title="Cosa puoi fare adesso"
+          onClose={close}
+          footer={<>
+            <button style={cmStyles.ghostBtn} onClick={() => setPhase('chooser')}>←</button>
+            <button style={{ ...cmStyles.primaryBtn, ...cmStyles.primaryBlue }} onClick={close}>Accetto e blocco</button>
+          </>}
+        >
+          <div style={{ position: 'relative', paddingLeft: 22, paddingRight: 4 }}>
+            <div style={{ position: 'absolute', left: 6, top: 6, bottom: 30, width: 1, background: '#dde3ec' }} />
+            {proposal.items.map((it, i) => (
+              <div key={i} style={{ position: 'relative', paddingBottom: 14 }}>
+                <div style={{
+                  position: 'absolute', left: -22, top: 4, width: 12, height: 12,
+                  borderRadius: '50%', background: it.kind === 'task' ? '#3a78d6' : '#c8d1dc',
+                  border: '2px solid #fff', boxShadow: '0 0 0 1px ' + (it.kind === 'task' ? '#3a78d6' : '#c8d1dc'),
+                }} />
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                  <span style={{ fontSize: 9.5, color: it.kind === 'task' ? '#3a78d6' : '#5f7388', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700, width: 36, fontFamily: '"JetBrains Mono", monospace' }}>
+                    {it.kind}
+                  </span>
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>{it.item.title}</span>
+                  <span style={{ fontSize: 11, color: '#5f7388', fontFamily: '"JetBrains Mono", monospace' }}>{fmtMin(it.item.duration)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CMSheet>
+      )}
+
+      {phase === 'quickcapture' && (
+        <CMQuickCaptureSheet
+          onClose={close}
+          onStartRecording={() => setPhase('voicelistening')}
+          onTypeText={() => setPhase('voiceresult')}
+          onManual={(kind) => setPhase(kind === 'task' ? 'newtask' : 'newevent')}
+        />
+      )}
+
+      {phase === 'voicelistening' && (
+        <CMVoiceListeningSheet
+          onClose={close}
+          onStop={() => setPhase('voiceresult')}
+        />
+      )}
+
+      {phase === 'voiceresult' && (
+        <CMVoiceResultSheet
+          onClose={close}
+          onSave={close}
+          onEdit={() => setPhase('newtask')}
+        />
+      )}
+
+      {phase === 'newtask' && (
+        <CMNewTaskSheet onClose={close} onSave={close} />
+      )}
+
+      {phase === 'newevent' && (
+        <CMNewEventSheet onClose={close} onSave={close} />
+      )}
+
+      {phase === 'shortcuts' && (
+        <CMShortcutsScreen onBack={close} />
+      )}
+    </div>
+  );
+}
+
+window.VariantCMobile = VariantCMobile;
+</script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════════════════════════
+// DESKTOP VARIANT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const C_W = 1180, C_H = 920;
+
+function VariantC() {
+  const [phase, setPhase] = React.useState('main');
+
+  return (
+    <div style={{
+      width: C_W, height: C_H, background: '#eef1f4', color: '#0e1620',
+      fontFamily: '"Inter Tight", -apple-system, system-ui, sans-serif',
+      fontSize: 13, position: 'relative', overflow: 'hidden',
+      display: 'grid', gridTemplateColumns: '260px 1fr 320px', boxSizing: 'border-box',
+    }}>
+      {/* SIDEBAR */}
+      <div style={{
+        background: '#0e1620', color: '#dde3ec',
+        padding: '22px 22px 24px', display: 'flex', flexDirection: 'column', gap: 22,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 6, background: '#3a78d6',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontSize: 13, fontWeight: 700,
+          }}>A</div>
+          <div style={{ fontSize: 16, fontWeight: 500 }}>Agenda</div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 1.8, textTransform: 'uppercase', color: '#5f7388', fontWeight: 600, marginBottom: 8 }}>
+            Oggi
+          </div>
+          <div style={{ marginTop: 8, fontFamily: '"JetBrains Mono", monospace', fontSize: 22, lineHeight: 1.1, letterSpacing: -0.5 }}>
+            14:05
+          </div>
+          <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: '#5f7388', marginTop: 2 }}>
+            LUN · 18 MAGGIO 2026
+          </div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 1.8, textTransform: 'uppercase', color: '#5f7388', fontWeight: 600, marginBottom: 10 }}>
+            Attività
+          </div>
+          {ACTIVITIES.map(a => (
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, marginBottom: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: a.color }} />
+              <span style={{ flex: 1 }}>{a.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CENTER - TIMELINE */}
+      <div style={{
+        background: '#eef1f4', padding: '22px 0 22px 28px',
+        overflow: 'hidden', position: 'relative',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ marginBottom: 18, paddingRight: 24 }}>
+          <div style={{ fontSize: 26, fontWeight: 500, letterSpacing: -0.3, lineHeight: 1.1 }}>Cronologia del giorno</div>
+          <div style={{ fontSize: 12.5, color: '#5f7388', marginTop: 4 }}>
+            3 sopralluoghi · 218 km · pianificati 4h 32m
+          </div>
+        </div>
+        <div style={{ flex: 1, position: 'relative', overflow: 'auto', paddingBottom: 24, paddingRight: 24 }}>
+          <div style={{ position: 'relative', marginLeft: 52, height: 600 }}>
+            {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].map(h => (
+              <div key={h} style={{
+                position: 'absolute', top: 24 + (h - 8) * 56,
+                left: -52, width: '100%', borderTop: '1px solid #dde3ec',
+              }}>
+                <span style={{
+                  position: 'absolute', top: -7, left: 0, fontFamily: '"JetBrains Mono", monospace',
+                  fontSize: 11, color: '#5f7388', fontVariantNumeric: 'tabular-nums', width: 40,
+                }}>
+                  {String(h).padStart(2, '0')}:00
+                </span>
+              </div>
+            ))}
+            {APPOINTMENTS.map(apt => {
+              const h = ((apt.start.split(':')[0] - 8) + apt.start.split(':')[1] / 60) * 56;
+              const height = ((apt.end.split(':')[0] - apt.start.split(':')[0]) * 60 + parseInt(apt.end.split(':')[1]) - parseInt(apt.start.split(':')[1])) / 60 * 56;
+              const a = ACT_BY_ID[apt.activityId];
+              const isActive = apt.status === 'active';
+              return (
+                <div key={apt.id} style={{
+                  position: 'absolute', top: 24 + h, height,
+                  left: 8, right: 20,
+                  background: isActive ? '#0e1620' : '#fff',
+                  border: isActive ? `2px solid #c96442` : `1px solid #c8d1dc`,
+                  borderLeft: `4px solid ${a.color}`,
+                  borderRadius: 6, padding: '10px 14px', boxSizing: 'border-box',
+                  color: isActive ? '#fff' : '#0e1620',
+                  opacity: apt.status === 'done' ? 0.7 : 1,
+                  cursor: 'pointer', zIndex: 3,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10.5, color: isActive ? '#9bb0c9' : '#5f7388', fontVariantNumeric: 'tabular-nums' }}>
+                      {apt.start} → {apt.end}
+                    </div>
+                    {isActive && (
+                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 9, color: '#c96442', letterSpacing: 1, fontWeight: 700, textTransform: 'uppercase' }}>
+                        ● In corso
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.2 }}>{apt.title}</div>
+                  <div style={{ fontSize: 11.5, color: isActive ? '#9bb0c9' : '#5f7388', marginTop: 2 }}>
+                    {apt.client} · {apt.address}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT PANEL */}
+      <div style={{
+        background: '#fff', borderLeft: '1px solid #dde3ec',
+        padding: '22px 22px 20px', display: 'flex', flexDirection: 'column', gap: 18,
+        overflow: 'hidden',
+      }}>
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 1.8, textTransform: 'uppercase', color: '#5f7388', fontWeight: 600 }}>
+            Adesso · in corso
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 500, marginTop: 6 }}>Villa Le Capezzine</div>
+          <div style={{ fontSize: 12, color: '#5f7388', marginTop: 2 }}>Cortona (AR)</div>
+          <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: '#3a78d6', marginTop: 8 }}>
+            Iniziato 12:38 · 1h 27m fa
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
+            <button style={{
+              flex: 1, padding: '10px 12px', background: '#3a78d6', color: '#fff',
+              border: 'none', borderRadius: 6, fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', letterSpacing: 0.3,
+            }} onClick={() => setPhase('ending')}>Fine sopralluogo</button>
+          </div>
+        </div>
+
+        <div style={{
+          background: '#fff', border: '1px solid #dde3ec', borderRadius: 8,
+          padding: 14,
+        }}>
+          <div style={{ fontSize: 10, letterSpacing: 1.8, textTransform: 'uppercase', color: '#5f7388', fontWeight: 600, marginBottom: 10 }}>
+            Task pianificati · {TASKS.length}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {TASKS.slice(0, 4).map(t => {
+              const a = ACT_BY_ID[t.activityId];
+              return (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.color }} />
+                  <span style={{ flex: 1, lineHeight: 1.3 }}>{t.title}</span>
+                  <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10.5, color: '#5f7388' }}>{fmtMin(t.duration)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {phase === 'ending' && (
+        <div style={{
+          position: 'absolute', inset: 0, background: 'rgba(14,22,32,0.55)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
+          backdropFilter: 'blur(4px)',
+        }} onClick={() => setPhase('main')}>
+          <div style={{
+            background: '#fff', borderRadius: 10, width: 580,
+            boxShadow: '0 24px 60px rgba(0,0,0,0.3)', overflow: 'hidden',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '20px 26px 14px', borderBottom: '1px solid #eef1f4' }}>
+              <div style={{ fontSize: 10, letterSpacing: 1.8, textTransform: 'uppercase', color: '#3a78d6', fontWeight: 600 }}>⏹ Fine</div>
+              <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4 }}>Concludo?</div>
+            </div>
+            <div style={{ padding: '18px 26px' }}>
+              <div style={{ fontSize: 13.5, color: '#3a4654', lineHeight: 1.55 }}>
+                Durata reale: <b>1h 27m</b> · pianificata 1h 30m.<br />
+                Risparmio: <b style={{ color: '#2a6f5e' }}>−3 min</b>
+              </div>
+            </div>
+            <div style={{ padding: '14px 26px', background: '#f6f8fb', display: 'flex', gap: 8 }}>
+              <button style={{
+                padding: '12px 18px', background: 'transparent', color: '#0e1620',
+                border: '1px solid #c8d1dc', borderRadius: 6, fontFamily: 'inherit',
+                fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+              }} onClick={() => setPhase('main')}>Annulla</button>
+              <button style={{
+                padding: '12px 22px', background: '#3a78d6', color: '#fff',
+                border: 'none', borderRadius: 6, fontFamily: 'inherit', fontSize: 13,
+                fontWeight: 600, cursor: 'pointer', marginLeft: 'auto',
+              }} onClick={() => setPhase('main')}>Concludi</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+window.VariantC = VariantC;
+window.C_W = C_W;
+window.C_H = C_H;
+</script>
+
+<script type="text/babel">
+// ═══════════════════════════════════════════════════════════════════════════════
+// APP LAUNCHER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function App() {
+  const [view, setView] = React.useState('mobile'); // mobile | desktop
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button onClick={() => setView('mobile')} style={{
+          padding: '12px 24px', background: view === 'mobile' ? '#3a78d6' : '#dde3ec',
+          color: view === 'mobile' ? '#fff' : '#0e1620', border: 'none', borderRadius: 8,
+          fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+        }}>📱 Mobile</button>
+        <button onClick={() => setView('desktop')} style={{
+          padding: '12px 24px', background: view === 'desktop' ? '#3a78d6' : '#dde3ec',
+          color: view === 'desktop' ? '#fff' : '#0e1620', border: 'none', borderRadius: 8,
+          fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+        }}>💻 Desktop</button>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 20 }}>
+        {view === 'mobile' ? (
+          <IOSDevice width={CM_W} height={CM_H}>
+            <VariantCMobile />
+          </IOSDevice>
+        ) : (
+          <VariantC />
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
